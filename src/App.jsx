@@ -518,24 +518,43 @@ function App() {
       ctx.stroke();
       ctx.restore();
 
-      ctx.save();
-      ctx.fillStyle = sceneObj.isAction ? '#94a3b8' : '#ffffff';
-      ctx.font = 'bold 24px Pretendard, sans-serif';
-      ctx.fillText(sceneObj.author, boxX + 40, boxY + 45);
-      ctx.restore();
-
+// 7. 메인 본문 줄바꿈 처리 및 렌더링 (자동 랩핑 엔진 탑재)
       ctx.save();
       ctx.fillStyle = sceneObj.isAction ? '#cbd5e1' : '#ffffff';
       ctx.font = sceneObj.isAction ? 'italic 22px Pretendard, sans-serif' : '22px Pretendard, sans-serif';
       
+      const maxTextWidth = boxWidth - 80; // 실질적인 글자 허용 가로폭 (1008px)
       const lineHeight = 36;
       let textX = boxX + 40;
       let textY = boxY + 95;
 
-      const lines = sceneObj.text.split('\n');
-      lines.forEach((line) => {
-        ctx.fillText(line, textX, textY);
-        textY += lineHeight;
+      // 우선 사용자가 직접 입력한 엔터(\n)를 먼저 쪼갭니다.
+      const rawLines = sceneObj.text.split('\n');
+
+      rawLines.forEach((rawLine) => {
+        let currentLineText = '';
+        
+        // 한 글자씩 검사하며 가로 제한폭을 넘는지 실시간 계산합니다.
+        for (let i = 0; i < rawLine.length; i++) {
+          const char = rawLine[i];
+          const testLine = currentLineText + char;
+          const metrics = ctx.measureText(testLine);
+          
+          if (metrics.width > maxTextWidth && i > 0) {
+            // 한계폭을 넘어가면 지금까지 쌓인 글자를 한 줄 먼저 그리고, 다음 줄로 토스합니다.
+            ctx.fillText(currentLineText, textX, textY);
+            currentLineText = char;
+            textY += lineHeight;
+          } else {
+            currentLineText = testLine;
+          }
+        }
+        
+        // 줄바꿈 계산 후 남은 최후의 잔여 텍스트를 마저 그려줍니다.
+        if (currentLineText.length > 0) {
+          ctx.fillText(currentLineText, textX, textY);
+          textY += lineHeight;
+        }
       });
       ctx.restore();
 

@@ -503,22 +503,23 @@ function App() {
         ctx.restore();
       }
 
+// 5. 하단 비주얼노벨 대사창 UI 정교하게 구축 (복원 완료)
       const boxWidth = 1088;
       const boxHeight = 180;
       const boxX = (canvas.width - boxWidth) / 2;
       const boxY = canvas.height - boxHeight - 40;
 
       ctx.save();
-      ctx.fillStyle = 'rgba(18, 24, 38, 0.88)';
+      ctx.fillStyle = 'rgba(18, 24, 38, 0.88)'; // 반투명 짙은 네이비
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 16) : ctx.rect(boxX, boxY, boxWidth, boxHeight);
+      ctx.rect(boxX, boxY, boxWidth, boxHeight);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
 
-// 6. 화자(Speaker) 이름 텍스트 얹기 (복원 완료)
+      // 6. 화자(Speaker) 이름 텍스트 얹기
       ctx.save();
       ctx.fillStyle = sceneObj.isAction ? '#94a3b8' : '#ffffff';
       ctx.font = 'bold 24px Pretendard, sans-serif';

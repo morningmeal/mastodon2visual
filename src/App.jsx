@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import './App.css' // 📌 [교정] App.css에서 현재 파일명인 App_4.css로 매핑 경로 수복
+import './App.css'
 
 function App() {
   // --- 상태 관리 ---
@@ -21,14 +21,18 @@ function App() {
   const [leftCharacter, setLeftCharacter] = useState({ name: '', avatar: '' })
   const [rightCharacter, setRightCharacter] = useState({ name: '', avatar: '' })
 
-  // 📌 지정 코드 컬러 팔레트 매핑 유지
+  // 📌 통합 자산 빌드 장전 완료 여부 및 제어 모달 상태
+  const [isPngReady, setIsPngReady] = useState(false)
+  const [showPrepModal, setShowPrepModal] = useState(false)
+
+  // 지정 코드 컬러 팔레트 매핑 유지[cite: 4]
   const colors = {
     mainBlue: '#235789',
     pointYellow: '#F1D302',
     uiNeutral: '#eeeeee'
   }
 
-  // 초기 로드 시 캐시 데이터 복원
+  // 초기 로드 시 캐시 데이터 복원[cite: 4]
   useEffect(() => {
     const savedToken = localStorage.getItem('masto_token')
     if (savedToken) setToken(savedToken)
@@ -46,30 +50,64 @@ function App() {
     if (savedRight) setRightCharacter(JSON.parse(savedRight))
   }, [])
 
-  // 데이터 변경 시 로컬스토리지에 자동 저장 (캐시 기능)
+  // 📌 [교정] 로컬스토리지 용량 초과(QuotaExceededError) 방지 예외 처리 적용[cite: 4]
   useEffect(() => {
     if (script.length > 0) {
-      localStorage.setItem('masto_reel_script', JSON.stringify(script))
+      try {
+        localStorage.setItem('masto_reel_script', JSON.stringify(script))
+      } catch (e) {
+        // 용량이 꽉 차서 저장이 실패하더라도, 앱이 터지지 않고 메모리 상에서 편집이 유지되도록 우회합니다.
+        console.warn('로컬스토리지 용량 초과로 자동 저장이 스킵되었습니다. 편집은 정상 유지됩니다.');
+      }
     }
   }, [script])
 
   useEffect(() => {
     if (bgGallery.length > 0) {
-      localStorage.setItem('masto_reel_gallery', JSON.stringify(bgGallery))
+      try {
+        localStorage.setItem('masto_reel_gallery', JSON.stringify(bgGallery))
+      } catch (e) {
+        console.warn('로컬스토리지 용량 초과로 갤러리 자동 저장이 스킵되었습니다.');
+      }
     }
   }, [bgGallery])
 
   useEffect(() => {
     if (leftCharacter.name) {
-      localStorage.setItem('masto_reel_left_char', JSON.stringify(leftCharacter))
+      try {
+        localStorage.setItem('masto_reel_left_char', JSON.stringify(leftCharacter))
+      } catch (e) {
+        console.warn('로컬스토리지 용량 초과로 캐릭터 저장이 스킵되었습니다.');
+      }
     }
   }, [leftCharacter])
 
   useEffect(() => {
     if (rightCharacter.name) {
-      localStorage.setItem('masto_reel_right_char', JSON.stringify(rightCharacter))
+      try {
+        localStorage.setItem('masto_reel_right_char', JSON.stringify(rightCharacter))
+      } catch (e) {
+        console.warn('로컬스토리지 용량 초과로 캐릭터 저장이 스킵되었습니다.');
+      }
     }
   }, [rightCharacter])
+
+  // 📌 전역 자산 무결성 자동 검증 훅 (외부 주소가 단 하나도 없을 때만 PNG 저장 버튼 잠금 해제)[cite: 4]
+  useEffect(() => {
+    if (script.length === 0) {
+      setIsPngReady(false)
+      return
+    }
+    const isLeftExternal = leftCharacter.avatar && leftCharacter.avatar.startsWith('http')
+    const isRightExternal = rightCharacter.avatar && rightCharacter.avatar.startsWith('http')
+    const hasExternalBg = script.some(scene => scene.customBg && scene.customBg.startsWith('http'))
+
+    if (isLeftExternal || isRightExternal || hasExternalBg) {
+      setIsPngReady(false)
+    } else {
+      setIsPngReady(true)
+    }
+  }, [script, leftCharacter, rightCharacter])
 
   function parseMastodonUrl(inputUrl) {
     try {
@@ -86,7 +124,6 @@ function App() {
     return textArea.value
   }
 
-  // 이미지 URL을 CORS 제약이 없는 base64 스트링으로 변환하는 엔진
   async function convertUrlToBase64(imageUrl, token) {
     if (!imageUrl) return '';
     try {
@@ -139,11 +176,11 @@ function App() {
       const leftName = firstToot.account.display_name || firstToot.account.username
       const rightName = secondToot.account.display_name || secondToot.account.username
       
-      const leftAvatarBase64 = await convertUrlToBase64(firstToot.account.avatar, token);
-      const rightAvatarBase64 = await convertUrlToBase64(secondToot.account.avatar, token);
+      const leftAvatarUrl = firstToot.account.avatar;
+      const rightAvatarUrl = secondToot.account.avatar;
 
-      setLeftCharacter({ name: leftName, avatar: leftAvatarBase64 })
-      setRightCharacter({ name: rightName, avatar: rightAvatarBase64 })
+      setLeftCharacter({ name: leftName, avatar: leftAvatarUrl })
+      setRightCharacter({ name: rightName, avatar: rightAvatarUrl })
 
       const allTootsMap = new Map()
       allTootsMap.set(firstToot.id, firstToot)
@@ -179,18 +216,15 @@ function App() {
 
         const tootMediaUrls = toot.media_attachments.map(m => m.url)
         
-        const base64MediaUrls = [];
         for (const [mIdx, mUrl] of tootMediaUrls.entries()) {
-          const mBase64 = await convertUrlToBase64(mUrl, token);
-          base64MediaUrls.push(mBase64);
           tempGallery.push({
             id: `toot-${toot.id}-${mIdx}`,
             label: `툿 #${tIdx + 1} 사진 (${mIdx + 1})`,
-            url: mBase64
+            url: mUrl
           })
         }
 
-        const currentAuthorAvatar = toot.account.id === firstToot.account.id ? leftAvatarBase64 : rightAvatarBase64;
+        const currentAuthorAvatar = toot.account.id === firstToot.account.id ? leftAvatarUrl : rightAvatarUrl;
         const parts = rawText.split(/(\([^)]+\))/g).map(p => p.trim()).filter(Boolean)
 
         parts.forEach((partText) => {
@@ -201,9 +235,9 @@ function App() {
             avatar: currentAuthorAvatar, 
             text: partText,
             isAction: isAction,
-            customBg: base64MediaUrls.length > 0 ? base64MediaUrls[0] : '',
+            customBg: tootMediaUrls.length > 0 ? tootMediaUrls[0] : '',
             bgFocus: 'center',
-            media: base64MediaUrls
+            media: tootMediaUrls
           })
         })
       }
@@ -283,14 +317,40 @@ function App() {
     const file = e.target.files[0]
     if (!file) return
 
-    const localUrl = URL.createObjectURL(file)
-    const newId = `local-${Date.now()}`
-    
-    setBgGallery([...bgGallery, {
-      id: newId,
-      label: `내부 파일: ${file.name}`,
-      url: localUrl
-    }])
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64Url = reader.result
+      const newId = `local-${Date.now()}`
+      setBgGallery([...bgGallery, {
+        id: newId,
+        label: `내부 파일: ${file.name}`,
+        url: base64Url
+      }])
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // 가이드 모달 내부 통합 개별 업로드 분기기[cite: 4]
+  const handlePrepAssetUpload = (e, type, originalUrl = '') => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64Result = reader.result
+
+      if (type === 'left') {
+        setLeftCharacter(prev => ({ ...prev, avatar: base64Result }))
+        setScript(prev => prev.map(s => s.author === leftCharacter.name ? { ...s, avatar: base64Result } : s))
+      } else if (type === 'right') {
+        setRightCharacter(prev => ({ ...prev, avatar: base64Result }))
+        setScript(prev => prev.map(s => s.author === rightCharacter.name ? { ...s, avatar: base64Result } : s))
+      } else if (type === 'bg' && originalUrl) {
+        setScript(prev => prev.map(s => s.customBg === originalUrl ? { ...s, customBg: base64Result } : s))
+        setBgGallery(prev => prev.map(g => g.url === originalUrl ? { ...g, url: base64Result, label: `업로드 완료: ${file.name}` } : g))
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const addCustomBgUrlToGallery = async () => {
@@ -335,6 +395,7 @@ function App() {
     setLeftCharacter({ name: '', avatar: '' })
     setRightCharacter({ name: '', avatar: '' })
     setFilterType('all')
+    setIsPngReady(false)
     alert('초기화되었습니다.')
   }
 
@@ -343,76 +404,159 @@ function App() {
   };
 
   const handleExportSceneToPNG = async (sceneObj, originalIndex) => {
-    // 💡 화면 캡처 중 상태 변화가 화면에 반영될 미세한 시간을 확보하기 위한 헬퍼
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // 현재 플레이어 상태 백업
-    const prevPlaying = isPlaying;
-    const prevIdx = currentSceneIdx;
-
     try {
-      // 1. 스크린샷을 찍기 위해 상영관(Player) 모드를 강제로 켜고 해당 장면으로 타깃팅합니다.
-      // (화면에 그려진 상태 그대로 픽셀을 따기 위함)
-      setIsPlaying(true);
-      setCurrentSceneIdx(originalIndex);
-      
-      // 화면이 플레이어 UI로 완전히 전환되고 이미지들이 렌더링될 때까지 100ms 대기
-      await sleep(100);
-
-      // 2. 브라우저 내장 화면 캡처 팝업 트리거
-      // ⚠️ [안내] 팝업창이 뜨면 반드시 "현재 탭" 또는 "해당 웹 화면"을 선택하고 [공유]를 눌러주셔야 합니다.
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          displaySurface: "browser", // 브라우저 탭 선택 유도
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-
-      // 3. 캡처된 비디오 스트림을 가상 비디오 엘리먼트에 매핑
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.autoplay = true;
-
-      // 비디오 데이터가 들어올 때까지 대기
-      await new Promise((resolve) => {
-        video.onloadedmetadata = () => resolve();
-      });
-      await sleep(50); // 첫 프레임이 깨끗하게 잡히도록 미세 대기
-
-      // 4. 가상 캔버스에 캡처된 픽셀 그대로 도장 찍기
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
-      
+      canvas.width = 1280;
+      canvas.height = 720;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // 5. 사용이 끝난 스트림 트랙 즉시 종료 (상단 화면 공유 바 제거)
-      stream.getTracks().forEach(track => track.stop());
+      const loadImage = (src) => {
+        return new Promise((resolve) => {
+          if (!src) return resolve(null);
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
+      };
+      
+      const [bgImg, leftAvatar, rightAvatar] = await Promise.all([
+        loadImage(sceneObj.customBg),
+        loadImage(leftCharacter.avatar),
+        loadImage(rightCharacter.avatar)
+      ]);
 
-      // 6. 100% 안전한 로컬 자산이 된 캔버스로부터 PNG 파일 추출 및 다운로드
+      if (bgImg) {
+        const canvasRatio = canvas.width / canvas.height;
+        const imgRatio = bgImg.width / bgImg.height;
+        let sX = 0, sY = 0, sWidth = bgImg.width, sHeight = bgImg.height;
+
+        if (imgRatio > canvasRatio) {
+          sWidth = bgImg.height * canvasRatio;
+          sX = (bgImg.width - sWidth) / 2;
+        } else {
+          sHeight = bgImg.width / canvasRatio;
+          if (sceneObj.bgFocus === 'top') sY = 0;
+          else if (sceneObj.bgFocus === 'bottom') sY = bgImg.height - sHeight;
+          else sY = (bgImg.height - sHeight) / 2;
+        }
+
+        ctx.drawImage(bgImg, sX, sY, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(12, 15, 23, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#0c0f17';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const isLeftActive = sceneObj.author === leftCharacter.name;
+      const avatarSize = 200;
+      const avatarY = 220;
+
+      if (leftAvatar) {
+        ctx.save();
+        const leftX = 150;
+        if (!isLeftActive || sceneObj.isAction) {
+          ctx.globalAlpha = 0.35;
+        }
+        ctx.beginPath();
+        ctx.arc(leftX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(leftAvatar, leftX, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+        ctx.globalAlpha = isLeftActive && !sceneObj.isAction ? 1.0 : 0.4;
+        ctx.fillText(leftCharacter.name, leftX + avatarSize / 2, avatarY + avatarSize + 35);
+        ctx.restore();
+      }
+
+      if (rightAvatar) {
+        ctx.save();
+        const rightX = canvas.width - 150 - avatarSize;
+        if (isLeftActive || sceneObj.isAction) {
+          ctx.globalAlpha = 0.35;
+        }
+        ctx.beginPath();
+        ctx.arc(rightX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(rightAvatar, rightX, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+        ctx.globalAlpha = !isLeftActive && !sceneObj.isAction ? 1.0 : 0.4;
+        ctx.fillText(rightCharacter.name, rightX + avatarSize / 2, avatarY + avatarSize + 35);
+        ctx.restore();
+      }
+
+      const boxWidth = 1088;
+      const boxHeight = 180;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = canvas.height - boxHeight - 40;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(18, 24, 38, 0.88)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 16) : ctx.rect(boxX, boxY, boxWidth, boxHeight);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = sceneObj.isAction ? '#94a3b8' : '#ffffff';
+      ctx.font = 'bold 24px Pretendard, sans-serif';
+      ctx.fillText(sceneObj.author, boxX + 40, boxY + 45);
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = sceneObj.isAction ? '#cbd5e1' : '#ffffff';
+      ctx.font = sceneObj.isAction ? 'italic 22px Pretendard, sans-serif' : '22px Pretendard, sans-serif';
+      
+      const lineHeight = 36;
+      let textX = boxX + 40;
+      let textY = boxY + 95;
+
+      const lines = sceneObj.text.split('\n');
+      lines.forEach((line) => {
+        ctx.fillText(line, textX, textY);
+        textY += lineHeight;
+      });
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.font = 'bold 14px Pretendard, sans-serif';
+      ctx.fillText(sceneObj.isAction ? 'ACTION' : 'DIALOGUE', boxX + 40, boxY + boxHeight - 20);
+      ctx.textAlign = 'right';
+      ctx.fillText(`SCENE ${originalIndex + 1}`, boxX + boxWidth - 40, boxY + boxHeight - 20);
+      ctx.restore();
+
       const link = document.createElement('a');
-      link.download = `MastoReel_Screenshot_Scene_${originalIndex + 1}_${Date.now()}.png`;
+      link.download = `MastoReel_Scene_${originalIndex + 1}_${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
     } catch (err) {
-      console.error('스크린샷 캡처 도중 오류 또는 취소됨:', err);
-      // 사용자가 팝업창에서 취소를 누른 경우 안내
-      if (err.name === 'NotAllowedError') {
-        alert('화면 캡처 권한이 거부되었거나 취소되었습니다.');
-      } else {
-        alert('PNG 스크린샷 생성에 실패했습니다.');
-      }
-    } finally {
-      // 7. [롤백] 스크린샷 작업이 끝나면 원래 사용자가 보고 있던 화면 상태로 완벽하게 되돌려놓습니다.
-      setIsPlaying(prevPlaying);
-      setCurrentSceneIdx(prevIdx);
+      console.error(err);
+      alert('PNG 생성 도중 예외가 발생했습니다.');
     }
   };
-
 
   const nextScene = () => {
     if (currentSceneIdx < script.length - 1) {
@@ -420,6 +564,14 @@ function App() {
     } else {
       alert('마지막 슬라이드 입니다.')
       setIsPlaying(false)
+    }
+  }
+
+  const startPlayerFromId = (id) => {
+    const targetIdx = script.findIndex(s => s.id === id);
+    if(targetIdx !== -1) {
+      setCurrentSceneIdx(targetIdx);
+      setIsPlaying(true);
     }
   }
 
@@ -436,7 +588,7 @@ function App() {
     return true
   })
 
-  // 📌 --- [복원] 플레이어 극장 스크린 실시간 상영관 렌더링 구역 ---
+  // 상영관 렌더링 구역[cite: 4]
   if (isPlaying && script.length > 0) {
     const scene = script[currentSceneIdx]
     const bgImage = scene.customBg
@@ -491,12 +643,11 @@ function App() {
     )
   }
 
-  // --- 메인 작업 데스크 스크린 렌더링 구역 ---
+  // 메인 작업 데스크[cite: 4]
   return (
     <div className="app-container">
       <div className="workspace-wrapper">
         
-        {/* 상단 통제 대시보드 카드 */}
         <div className="dashboard-card no-print" style={{ borderTop: `5px solid ${colors.mainBlue}` }}>
           <h1 className="dashboard-title" style={{ color: colors.mainBlue }}>마스토돈 to 비주얼노벨</h1>
           <p className="dashboard-desc">URL로 2인 대화 슬라이드 생성</p>
@@ -514,15 +665,23 @@ function App() {
 
           <div className="btn-group-row">
             <button onClick={handleFetchThread} disabled={loading} className="btn-base" style={{ backgroundColor: colors.mainBlue, color: '#fff' }}>
-              {loading ? '분석 중...' : '데이터 수집'}
+              {loading ? '분석 중...' : '수집'}
             </button>
             {script.length > 0 && (
               <>
-                <button onClick={() => startPlayerFromId(script[0].id)} className="btn-base" style={{ backgroundColor: colors.pointYellow, color: '#1e293b' }}>슬라이드 보기</button>
-                <button onClick={handleExportToPDF} className="btn-base btn-emerald-pdf">PDF 저장</button>
+                <button onClick={() => startPlayerFromId(script[0].id)} className="btn-base" style={{ backgroundColor: colors.pointYellow, color: '#1e293b' }}>보기</button>
+                <button onClick={handleExportToPDF} className="btn-base btn-emerald-pdf">PDF</button>
                 
+                <button 
+                  onClick={() => setShowPrepModal(true)} 
+                  className="btn-base" 
+                  style={{ backgroundColor: isPngReady ? '#10b981' : '#a42929', color: '#ffffff' }}
+                >
+                  {isPngReady ? '준비 완료' : 'PNG 준비'}
+                </button>
+
                 <label className="btn-base btn-file-upload-label" style={{ backgroundColor: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
-                   배경 파일 추가
+                   배경 추가
                   <input type="file" accept="image/*" onChange={handleLocalLocalFileUpload} style={{ display: 'none' }} />
                 </label>
                 <button onClick={addCustomBgUrlToGallery} className="btn-base btn-outline-gray">배경 URL 추가</button>
@@ -532,7 +691,7 @@ function App() {
           </div>
         </div>
 
-        {/* 독립된 갤러리 라이브러리 관리 섹션 */}
+        {/* 갤러리[cite: 4] */}
         {script.length > 0 && bgGallery.length > 0 && (
           <div className="dashboard-card no-print" style={{ borderTop: `4px solid ${colors.mainBlue}`, padding: '20px' }}>
             <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: colors.mainBlue, fontWeight: '800' }}>배경 갤러리</h3>
@@ -546,7 +705,6 @@ function App() {
                   <button 
                     onClick={() => deleteBgFromGallery(bg.id, bg.url)} 
                     style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', width: '18px', height: '16px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}
-                    title="영구 삭제"
                   >
                     ✕
                   </button>
@@ -556,7 +714,7 @@ function App() {
           </div>
         )}
 
-        {/* main 에디터 레이아웃 */}
+        {/* 에디터 목록[cite: 4] */}
         {script.length > 0 && (
           <div>
             <div className="dashboard-card no-print" style={{ padding: '14px 20px', marginBottom: '20px', borderTop: 'none', borderLeft: `4px solid ${filterType !== 'all' ? '#10b981' : '#cbd5e1'}` }}>
@@ -615,7 +773,7 @@ function App() {
                   )}
 
                   <div className="card-header-row">
-                    <img src={scene.avatar} alt="author-avatar" className="meta-avatar" />
+                    <img src={scene.avatar} alt="avatar" className="meta-avatar" style={{ backgroundColor: '#cbd5e1' }} />
                     <span className="meta-author">{scene.author}</span>
                     <span className="meta-scene-badge" style={{ color: colors.mainBlue }}>SCENE {currentIdx + 1}</span>
                     
@@ -625,13 +783,15 @@ function App() {
                     <button onClick={() => deleteScene(scene.id)} className="inner-action-btn inner-btn-delete">삭제</button>
                     <button onClick={() => startPlayerFromId(scene.id)} className="inner-action-btn inner-btn-preview">미리보기</button>
 
-                    <button 
-                      onClick={() => handleExportSceneToPNG(scene, currentIdx)} 
-                      className="inner-action-btn" 
-                      style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}
-                    >
-                      PNG 저장
-                    </button>   
+                    {isPngReady && (
+                      <button 
+                        onClick={() => handleExportSceneToPNG(scene, currentIdx)} 
+                        className="inner-action-btn" 
+                        style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}
+                      >
+                        PNG 저장
+                      </button>   
+                    )}
               
                     <div className="header-tools-right">
                       <button onClick={() => { const textarea = document.getElementById(`text-${scene.id}`); splitScene(scene.id, textarea.selectionStart); }} className="inner-action-btn inner-btn-header-tool">커서기준분할</button>
@@ -705,7 +865,68 @@ function App() {
         )}
       </div>
 
-      {/* 📌 백그라운드 전체 슬라이드 PDF 빌드 존 (화면엔 안 보임) */}
+      {/* 일괄 등록 모달 포털[cite: 4] */}
+      {showPrepModal && (
+        <div className="modal-overlay-mask" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div className="modal-window-box" style={{ background: '#ffffff', maxWidth: '560px', width: '100%', borderRadius: '14px', padding: '24px', boxSizing: 'border-box', maxHeight: '85vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>PNG 준비</h3>
+            <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6', margin: '0 0 20px 0' }}>
+              CORS 오염 방지를 위해 아래 목록의 원본 주소를 클릭하여 저장한 뒤, 컴퓨터에서 파일로 각각 재등록해 주세요. 모든 파일이 등록되면 저장 단추가 활성화됩니다.
+            </p>
+            
+            <div style={{ marginBottom: '20px', paddingBottom: '15px', borderBottom: '1px dashed #cbd5e1' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700' }}>프로필 등록</h4>
+              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                {leftCharacter.name && leftCharacter.avatar.startsWith('http') && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}>
+                    <span>{leftCharacter.name}</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <a href={leftCharacter.avatar} target="_blank" rel="noreferrer" style={{ background: '#e2e8f0', color: '#1e293b', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: '600' }}>다운로드</a>
+                      <label style={{ background: '#235789', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>등록<input type="file" accept="image/*" onChange={(e) => handlePrepAssetUpload(e, 'left')} style={{ display: 'none' }} /></label>
+                    </div>
+                  </div>
+                )}
+                {rightCharacter.name && rightCharacter.avatar.startsWith('http') && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}>
+                    <span>{rightCharacter.name}</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <a href={rightCharacter.avatar} target="_blank" rel="noreferrer" style={{ background: '#e2e8f0', color: '#1e293b', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: '600' }}>다운로드</a>
+                      <label style={{ background: '#235789', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>등록<input type="file" accept="image/*" onChange={(e) => handlePrepAssetUpload(e, 'right')} style={{ display: 'none' }} /></label>
+                    </div>
+                  </div>
+                )}
+                {(!leftCharacter.avatar?.startsWith('http') && !rightCharacter.avatar?.startsWith('http')) && (
+                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '700' }}>프로필 준비 완료</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700' }}>배경 등록</h4>
+              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                {bgGallery.filter(g => g.url.startsWith('http')).map((bg) => (
+                  <div key={bg.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}>
+                    <span style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bg.label}</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <a href={bg.url} target="_blank" rel="noreferrer" style={{ background: '#e2e8f0', color: '#1e293b', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: '600' }}>다운로드</a>
+                      <label style={{ background: '#235789', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>등록<input type="file" accept="image/*" onChange={(e) => handlePrepAssetUpload(e, 'bg', bg.url)} style={{ display: 'none' }} /></label>
+                    </div>
+                  </div>
+                ))}
+                {bgGallery.filter(g => g.url.startsWith('http')).length === 0 && (
+                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '700' }}>배경 준비 완료</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <button onClick={() => setShowPrepModal(false)} style={{ background: '#cbd5e1', color: '#1e293b', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF 빌드 존[cite: 4] */}
       <div className="pdf-print-zone">
         {script.map((scene, idx) => {
           const bgImage = scene.customBg;

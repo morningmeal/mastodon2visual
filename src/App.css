@@ -7,7 +7,7 @@ html, body, #root, .app-container {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 100% !important;
-  background-color: #f1f5f9 !important; /* 📌 화면 우측 끝까지 완벽하게 한 색상으로 채움 */
+  background-color: #f1f5f9 !important; 
   border: none !important;
   box-shadow: none !important;
   left: 0 !important;
@@ -22,12 +22,11 @@ html, body, #root, .app-container {
   color: #1e293b;
   min-height: 100vh;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 60px 20px !important; /* 📌 [정석 교정] 상하 패딩을 60px 대형 수치로 전담 고정하여 숨통을 트이게 합니다 */
+  padding: 60px 20px !important; 
   letter-spacing: -0.02em;
   box-sizing: border-box;
 }
 
-/* 편집 화면의 가로 넓이를 중앙集中 정돈 */
 .workspace-wrapper {
   max-width: 780px; 
   margin: 0 auto;
@@ -36,7 +35,6 @@ html, body, #root, .app-container {
   background: transparent !important;
 }
 
-/* 카드 기본 틀 구성 */
 .dashboard-card {
   background-color: #ffffff;
   border-radius: 14px;
@@ -61,7 +59,6 @@ html, body, #root, .app-container {
   box-shadow: 0 6px 12px rgba(35, 87, 137, 0.06);
 }
 
-/* 타이틀 가이드 */
 .dashboard-title {
   margin: 0 0 6px 0;
   font-size: 24px;
@@ -101,7 +98,7 @@ html, body, #root, .app-container {
 }
 
 /* ==========================================================================
-   2. 인풋 및 버튼 컨트롤러 컴포넌트 (정중앙 밸런스 정렬 추가)
+   2. 인풋 및 버튼 컨트롤러 컴포넌트
    ========================================================================== */
 .input-grid {
   display: flex;
@@ -147,7 +144,6 @@ html, body, #root, .app-container {
   flex-wrap: wrap;
 }
 
-/* 통제 버튼 기본 틀 */
 .btn-base {
   padding: 0 14px;
   font-size: clamp(11px, 1.4vw, 14px); 
@@ -159,8 +155,8 @@ html, body, #root, .app-container {
   height: 38px;
   display: inline-flex;
   align-items: center;
-  justify-content: center; /* 📌 가로 가운데 정렬 */
-  text-align: center;      /* 📌 텍스트 정렬 보장 */
+  justify-content: center; 
+  text-align: center;      
   transition: all 0.2s ease;
   white-space: nowrap; 
 }
@@ -174,7 +170,6 @@ html, body, #root, .app-container {
 .btn-outline-gray { background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1; }
 .btn-reset-red { background-color: #fff1f2; color: #ef4444; border: 1px solid #fecdd3; margin-left: auto; }
 
-/* 📌 [App.jsx 연동 교정]: 라벨 형태의 배경 파일 추가 버튼 정중앙 정렬 속성 강제 지정 */
 .btn-file-upload-label {
   display: inline-flex !important;
   align-items: center !important;
@@ -182,7 +177,6 @@ html, body, #root, .app-container {
   text-align: center !important;
 }
 
-/* 내부 카드 탑 바 단추 크기 규격화 */
 .card-header-row {
   display: flex;
   align-items: center;
@@ -213,10 +207,9 @@ html, body, #root, .app-container {
   font-weight: 800; 
 }
 
-/* 📌 씬 카드 내부 미니 액션 버튼: 가로폭 압박 시 자막 폰트 축소 바인딩 */
 .inner-action-btn {
   padding: 0 8px;
-  font-size: clamp(10px, 1.1vw, 12px); /* 해상도 압축 시 최소 10px까지 반응형 축소 */
+  font-size: clamp(10px, 1.1vw, 12px); 
   font-weight: 700;
   border: none;
   border-radius: 6px;
@@ -241,7 +234,6 @@ html, body, #root, .app-container {
   gap: 4px;
 }
 
-/* 대사량 경고 배너 */
 .warning-length-banner {
   background-color: #fff9db;
   color: #d97706;
@@ -268,7 +260,7 @@ html, body, #root, .app-container {
 }
 
 .right-pane-configurator {
-  width: 250px; /* 📌 전체 창 가로폭이 줄어듦에 따라 우측 설정창 인덱스도 250px로 최적화 */
+  width: 250px; 
   flex-shrink: 0;
   background-color: #f8fafc;
   padding: 12px;
@@ -369,7 +361,7 @@ html, body, #root, .app-container {
 }
 
 /* ==========================================================================
-   4. 영화모드 실시간 상영관 극장 스크린 레이아웃 (오리지널 무채색 보존 영역)
+   4. 영화모드 실시간 상영관 극장 스크린 레이아웃
    ========================================================================== */
 .full-player-mask {
   position: fixed;
@@ -491,21 +483,19 @@ html, body, #root, .app-container {
 }
 
 /* ==========================================================================
-   6. 대본 에디터 연동 - 무결점 전체 슬라이드 자동 빌드 인쇄 (@media print)
+   6. 인쇄 구역 (@media print)
    ========================================================================== */
-/* 평소 브라우저 화면에서는 인쇄 구역을 완벽히 숨겨둠 */
 .pdf-print-zone {
   display: none;
 }
 
 @media print {
-  /* 📌 [최종 해결] 최상단 0번 섹션의 !important 레이아웃을 인쇄 시점에 완전히 파괴합니다 */
   html, body, #root, .app-container {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 100% !important;
     height: auto !important;
-    overflow: visible !important; /* 브라우저가 아래로 스크롤하며 모든 슬라이드를 읽도록 허용 */
+    overflow: visible !important; 
     margin: 0 !important;
     padding: 0 !important;
     background-color: #0c0f17 !important;
@@ -513,12 +503,10 @@ html, body, #root, .app-container {
     print-color-adjust: exact !important;
   }
 
-  /* 📌 1. 인쇄하는 동안은 에디터 화면과 대시보드를 완전히 증발시킵니다 */
   .no-print, .workspace-wrapper, .dashboard-card, .editor-card, .section-title-bar {
     display: none !important;
   }
 
-  /* 📌 2. 숨겨져 있던 PDF 슬라이드 빌드 구역을 전면 활성화 */
   .pdf-print-zone {
     display: block !important;
     position: relative !important;
@@ -526,16 +514,14 @@ html, body, #root, .app-container {
     height: auto !important;
   }
 
-  /* 가로 용지 고정 및 여백 파괴 */
   @page {
     size: landscape;
     margin: 0 !important;
   }
 
-  /* 📌 3. 각 슬라이드를 브라우저 화면(Viewport) 규격에 1:1로 매포하고 강제 페이지 넘김 적용 */
   .pdf-slide-page {
-    page-break-inside: avoid !important; /* 슬라이드 중간 잘림 방지 */
-    page-break-after: always !important; /* 한 장면이 끝나면 무조건 다음 장으로 */
+    page-break-inside: avoid !important; 
+    page-break-after: always !important; 
     break-after: page !important;
     
     position: relative !important;
@@ -550,7 +536,6 @@ html, body, #root, .app-container {
     overflow: hidden !important;
   }
 
-  /* 📌 4. 내부 컴포넌트 스타일 강제 상속 및 싱크로율 100% 맞춤 */
   .pdf-slide-page .player-background-canvas {
     position: absolute !important;
     width: 100% !important;
@@ -619,15 +604,13 @@ html, body, #root, .app-container {
 }
 
 /* ==========================================================================
-   7. 상영관(Player) 내부 액션 버튼 디자인 고도화 (화면 동기화)
+   7. 상영관(Player) 내부 단추 고도화
    ========================================================================== */
-
-/* 1. 상단 우측의 ✕ (닫기) 버튼 수정 */
 .player-top-header-bar .inner-btn-delete {
-  background-color: rgba(0, 0, 0, 0.4) !important; /* 📌 반투명한 어두운 배경 */
-  color: rgba(255, 255, 255, 0.6) !important;      /* 📌 은은한 흰색 텍스트 */
-  border: 1px solid rgba(255, 255, 255, 0.15) !important; /* 📌 얇은 외곽선 */
-  border-radius: 20px !important;                  /* 📌 둥글게 깎아서 UI 통일 */
+  background-color: rgba(0, 0, 0, 0.4) !important; 
+  color: rgba(255, 255, 255, 0.6) !important;      
+  border: 1px solid rgba(255, 255, 255, 0.15) !important; 
+  border-radius: 20px !important;                  
   padding: 4px 12px !important;
   height: auto !important;
   font-size: 13px !important;
@@ -635,14 +618,13 @@ html, body, #root, .app-container {
 }
 
 .player-top-header-bar .inner-btn-delete:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important; /* 마우스 올리면 살짝 밝아짐 */
+  background-color: rgba(255, 255, 255, 0.15) !important; 
   color: #ffffff !important;
 }
 
-/* 2. 하단 자막창 내부의 [이전] 버튼 수정 */
 .compact-vn-meta-row .inner-btn-header-tool {
-  background-color: rgba(0, 0, 0, 0.5) !important; /* 📌 반투명한 어두운 배경 */
-  color: rgba(255, 255, 255, 0.6) !important;      /* 📌 은은한 흰색 텍스트 */
+  background-color: rgba(0, 0, 0, 0.5) !important; 
+  color: rgba(255, 255, 255, 0.6) !important;      
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 6px !important;
   padding: 2px 10px !important;
@@ -654,4 +636,25 @@ html, body, #root, .app-container {
 .compact-vn-meta-row .inner-btn-header-tool:hover {
   background-color: rgba(255, 255, 255, 0.2) !important;
   color: #ffffff !important;
+}
+
+/* ==========================================================================
+   8. 가로 656px 이하 모바일 환경 전용 미디어 쿼리 수복
+   ========================================================================== */
+@media screen and (max-width: 656px) {
+  .app-container { padding: 20px 12px !important; }
+  .input-grid { flex-direction: column; gap: 10px; }
+  .btn-group-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .btn-reset-red { margin-left: 0; grid-column: span 2; }
+  .split-flex-container { flex-direction: column; gap: 12px; }
+  .right-pane-configurator { width: 100% !important; box-sizing: border-box; padding: 12px; gap: 10px; }
+  .asset-preview-row { flex-direction: row; justify-content: space-between; align-items: center; }
+  .card-header-row { flex-wrap: wrap; gap: 6px; }
+  .header-tools-right {
+    margin-left: 0; width: 100%; display: flex; justify-content: flex-start; gap: 6px; margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 6px;
+  }
+}
+
+.modal-overlay-mask {
+  justify-content: center;
 }

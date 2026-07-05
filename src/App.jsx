@@ -625,14 +625,6 @@ function App() {
     });
   }
 
-  const startPlayerFromId = (id) => {
-    const targetIdx = script.findIndex(s => s.id === id);
-    if(targetIdx !== -1) {
-      setCurrentSceneIdx(targetIdx);
-      setIsPlaying(true);
-    }
-  }
-
   const filteredScript = script.map((scene, originalIndex) => ({
     ...scene,
     originalIndex

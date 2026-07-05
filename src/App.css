@@ -658,3 +658,40 @@ html, body, #root, .app-container {
 .modal-overlay-mask {
   justify-content: center;
 }
+
+/* ==========================================================================
+   9. 편의성 패치: 맨 위로 가기 버튼 (CSS 추가)
+   ========================================================================== */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #235789; /* mainBlue 식별자 매핑 */
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 999;
+  transition: all 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.scroll-to-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.scroll-to-top-btn:hover {
+  transform: translateY(-3px);
+  background-color: #1a426b;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+}

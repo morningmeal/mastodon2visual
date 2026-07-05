@@ -16,6 +16,10 @@ function App() {
   // 플레이어 및 편집 모드 상태
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentSceneIdx, setCurrentSceneIdx] = useState(0)
+
+  // 📍 [편의성 추가] 이전 스크롤 위치 및 상단 이동 버튼 노출 상태
+  const [scrollPosition, setScrollPosition] = useState(0)
+  const [showTopBtn, setShowTopBtn] = useState(false)
   
   // 좌우 고정 캐릭터 상태
   const [leftCharacter, setLeftCharacter] = useState({ name: '', avatar: '' })
@@ -594,6 +598,33 @@ function App() {
     }
   }
 
+  // 📍 [편의성 추가] 미리보기 진입 시 현재 스크롤 기억 로직 통합
+  const startPlayerFromId = (id) => {
+    const targetIdx = script.findIndex(s => s.id === id);
+    if(targetIdx !== -1) {
+      setScrollPosition(window.scrollY); // 진입 직전의 스크롤 위치 기록
+      setCurrentSceneIdx(targetIdx);
+      setIsPlaying(true);
+    }
+  }
+
+  // 📍 [편의성 추가] 미리보기 종료 및 스크롤 복원 트리거 핸들러
+  const handleClosePlayer = () => {
+    setIsPlaying(false);
+    // 미리보기 컴포넌트가 닫히고 DOM이 재배치된 직후 원래 스크롤 위치 복원
+    setTimeout(() => {
+      window.scrollTo(0, scrollPosition);
+    }, 10);
+  }
+
+  // 📍 [편의성 추가] 맨 위로 부드럽게 스크롤해 주는 애니메이션 핸들러
+  const handleScrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
   const startPlayerFromId = (id) => {
     const targetIdx = script.findIndex(s => s.id === id);
     if(targetIdx !== -1) {
@@ -959,6 +990,61 @@ function App() {
           const bgImage = scene.customBg;
           const isLeftActive = scene.author === leftCharacter.name;
           
+          return (
+            <div key={`pdf-slide-node-${scene.id}`} className="pdf-slide-page">
+              {bgImage && (
+                <img 
+                  src={bgImage} 
+                  alt="bg" 
+                  className="player-background-canvas" 
+                  style={{ objectPosition: scene.bgFocus }} 
+                />
+              )}
+
+              <div style={{ position: 'absolute', top: '30px', right: '40px', color: 'rgba(255,255,255,0.5)', fontWeight: 'bold', fontSize: '14px', zIndex: 10 }}>
+                SLIDE {idx + 1} / {script.length}
+              </div>
+
+              <div className="player-actor-stage">
+                <div className="actor-profile-pillar">
+                  <img 
+                    src={leftCharacter.avatar} 
+                    alt="left" 
+                    style={{ 
+                      border: isLeftActive && !scene.isAction ? '4px solid #ffffff' : '4px solid rgba(255,255,255,0.04)', 
+                      filter: isLeftActive && !scene.isAction ? 'brightness(1) scale(1.04)' : 'brightness(0.35) scale(0.96)' 
+                    }} 
+                  />
+                  <div className="actor-profile-name-tag" style={{ opacity: isLeftActive ? 1 : 0.4 }}>{leftCharacter.name}</div>
+                </div>
+                <div className="actor-profile-pillar">
+                  <img 
+                    src={rightCharacter.avatar} 
+                    alt="right" 
+                    style={{ 
+                      border: !isLeftActive && !scene.isAction ? '4px solid #ffffff' : '4px solid rgba(255,255,255,0.04)', 
+                      filter: !isLeftActive && !scene.isAction ? 'brightness(1) scale(1.04)' : 'brightness(0.35) scale(0.96)' 
+                    }} 
+                  />
+                  <div className="actor-profile-name-tag" style={{ opacity: !isLeftActive ? 1 : 0.4 }}>{rightCharacter.name}</div>
+                </div>
+              </div>
+
+              <div className="vn-dialogue-base-container">
+                <div className="vn-speaker-title-area">
+                  <span className="vn-speaker-text" style={{ color: scene.isAction ? '#94a3b8' : '#ffffff' }}>{scene.author}</span>
+                </div>
+                
+                <p className="vn-dialogue-main-paragraph" style={{ fontStyle: scene.isAction ? 'italic' : 'normal', color: scene.isAction ? '#cbd5e1' : '#ffffff' }}>
+                  {scene.text}
+                </p>
+                
+                <div className="compact-vn-meta-row">
+                  <span>{scene.isAction ? 'ACTION' : 'DIALOGUE'}</span>
+                </div>
+              </div>
+            </div>
+          )
           return (
             <div key={`pdf-slide-node-${scene.id}`} className="pdf-slide-page">
               {bgImage && (
